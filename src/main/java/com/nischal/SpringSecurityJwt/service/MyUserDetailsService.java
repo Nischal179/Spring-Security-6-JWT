@@ -23,7 +23,8 @@ public class MyUserDetailsService implements UserDetailsService {
             System.out.println("User Not Found");
             throw new UsernameNotFoundException("User not found");
         }
-
+//  DaoAuthenticationProvider expects a UserDetails object to represent
+//  the authenticated user, and UserPrincipal meets this requirement.
         return new UserPrincipal(users);
     }
 }

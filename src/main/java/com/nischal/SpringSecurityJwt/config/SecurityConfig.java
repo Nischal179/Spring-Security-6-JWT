@@ -35,6 +35,9 @@ public class SecurityConfig {
                 .build();
     }
 
+    // Using our own authentication provider to customize the authentication process
+    // Providing control over password encoding amd user detail retrieval essential for
+    // scenario like integrating with a custom database
     @Bean
     public AuthenticationProvider authenticationProvider() {
         DaoAuthenticationProvider provider = new DaoAuthenticationProvider();
