@@ -1,5 +1,6 @@
 package com.nischal.SpringSecurityJwt.service;
 
+import com.nischal.SpringSecurityJwt.model.UserPrincipal;
 import com.nischal.SpringSecurityJwt.model.Users;
 import com.nischal.SpringSecurityJwt.repository.UserRepository;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -23,6 +24,6 @@ public class MyUserDetailsService implements UserDetailsService {
             throw new UsernameNotFoundException("User not found");
         }
 
-        return null;
+        return new UserPrincipal(users);
     }
 }
