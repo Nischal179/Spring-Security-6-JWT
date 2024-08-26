@@ -25,11 +25,24 @@ public class JWTService {
     @Value("${jwt.secret}")
     private String secretKey;
 
-    public JWTService() {
+    @Value("${jwt.expiration}")
+    private int jwtExpirationInMs;
 
+    @Value("${jwt.refreshExpiration}")
+    private int refreshExpirationInMs;
+
+    // Method to generate access token
+    public String generateToken(String username) {
+        return generateToken(username, jwtExpirationInMs);
     }
 
-    public String generateToken(String username) {
+    // Method to generate refresh token
+    public String generateRefreshToken(String username) {
+        return generateToken(username, refreshExpirationInMs);
+    }
+
+    // Generic method to generate a token with custom expiration
+    public String generateToken(String username, int expirationTimeInMs) {
 
         Map<String, Object> claims = new HashMap<>();
 
@@ -42,7 +55,7 @@ public class JWTService {
                 .add(claims)
                 .subject(username)
                 .issuedAt(new Date(System.currentTimeMillis()))
-                .expiration(new Date(System.currentTimeMillis() + 60 * 1000))
+                .expiration(new Date(System.currentTimeMillis() + expirationTimeInMs))
                 .and()
                 .signWith(getKey())
                 .compact();
