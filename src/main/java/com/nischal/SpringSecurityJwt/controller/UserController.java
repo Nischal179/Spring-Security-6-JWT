@@ -2,7 +2,11 @@ package com.nischal.SpringSecurityJwt.controller;
 
 import com.nischal.SpringSecurityJwt.model.Users;
 import com.nischal.SpringSecurityJwt.service.UserService;
+import jakarta.servlet.http.Cookie;
+import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RestController;
@@ -19,8 +23,26 @@ public class UserController {
     }
 
     @PostMapping("/login")
-    public String login(@RequestBody Users users) {
+    public ResponseEntity<Void> login(@RequestBody Users users, HttpServletResponse response) {
+        String jwt = service.verify(users);
 
-        return service.verify(users);
+        if (!"Fail".equals(jwt)) {
+
+            //Create an HTTP-only cookie for the JWT
+            Cookie jwtCookie = new Cookie("token",jwt);
+            jwtCookie.setHttpOnly(true);
+            jwtCookie.setSecure(false);
+            jwtCookie.setPath("/");
+            jwtCookie.setMaxAge(60);
+
+            // Add the cookie to the response
+            response.addCookie(jwtCookie);
+
+            // Return a response with 200 OK status
+            return ResponseEntity.ok().build();
+        }
+
+        // Return a 401 Unauthorized status if authentication fails
+        return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
     }
 }

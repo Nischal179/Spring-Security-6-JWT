@@ -1,6 +1,6 @@
 package com.nischal.SpringSecurityJwt.service;
 
-import com.nischal.SpringSecurityJwt.model.UserPrincipal;
+import com.nischal.SpringSecurityJwt.dto.UserPrincipal;
 import com.nischal.SpringSecurityJwt.model.Users;
 import com.nischal.SpringSecurityJwt.repository.UserRepository;
 import org.springframework.beans.factory.annotation.Autowired;

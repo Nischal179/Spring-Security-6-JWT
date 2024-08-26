@@ -35,15 +35,14 @@ public class JWTService {
 
         // Building the JWT with the claims
         return Jwts.builder()
-                .claims() // Add any claims you want to include in the payload
+                .header()
+                .add("typ","JWT")
+                .and()
+                .claims()
                 .add(claims)
                 .subject(username)
                 .issuedAt(new Date(System.currentTimeMillis()))
                 .expiration(new Date(System.currentTimeMillis() + 60 * 1000))
-
-                .and()
-                .header()
-                .add("typ","JWT")
                 .and()
                 .signWith(getKey())
                 .compact();

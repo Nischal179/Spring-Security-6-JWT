@@ -11,6 +11,8 @@ public class Users {
     private String username;
     private  String password;
 
+    private String refreshToken;
+
     public int getId() {
         return id;
     }
@@ -35,12 +37,21 @@ public class Users {
         this.password = password;
     }
 
+    public String getRefreshToken() {
+        return refreshToken;
+    }
+
+    public void setRefreshToken(String refreshToken) {
+        this.refreshToken = refreshToken;
+    }
+
     @Override
     public String toString() {
         return "Users{" +
                 "id=" + id +
                 ", username='" + username + '\'' +
                 ", password='" + password + '\'' +
+                ", refreshToken='" + refreshToken + '\'' +
                 '}';
     }
 }
