@@ -29,7 +29,7 @@ public class JwtFilter extends OncePerRequestFilter {
     @Override
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain) throws ServletException, IOException {
         // Get access token and refresh token from cookies
-        String accessToken = getTokenFromCookies(request, "accessToken");
+        String accessToken = getTokenFromCookies(request, "access_token");
         String refreshToken = null;
         String username = null;
 
@@ -43,14 +43,14 @@ public class JwtFilter extends OncePerRequestFilter {
             if (jwtService.validateToken(accessToken, userDetails)) {
                 setAuthentication(userDetails, request);
 
-            } else if ("/refreshToken".equals(request.getRequestURI())) {
+            } else if ("/refresh-token".equals(request.getRequestURI())) {
                 // Get refresh token only if the request path matches "/refresh-token"
-                refreshToken = getTokenFromCookies(request, "refreshToken");
+                refreshToken = getTokenFromCookies(request, "refresh_token");
 
                 if (refreshToken != null && jwtService.validateRefreshToken(username, refreshToken)){
                     // Generate new access token using the refresh token
                     String newAccessToken = jwtService.generateToken(username);
-                    Cookie newAccessTokenCookie = new Cookie("accessToken", newAccessToken);
+                    Cookie newAccessTokenCookie = new Cookie("access_token", newAccessToken);
                     newAccessTokenCookie.setHttpOnly(true);
                     newAccessTokenCookie.setSecure(true); // Ensure to use secure flag in production
                     newAccessTokenCookie.setPath("/");
