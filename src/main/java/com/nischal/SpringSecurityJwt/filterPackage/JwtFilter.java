@@ -47,7 +47,7 @@ public class JwtFilter extends OncePerRequestFilter {
                 // Get refresh token only if the request path matches "/refresh-token"
                 refreshToken = getTokenFromCookies(request, "refreshToken");
 
-                if (refreshToken != null && jwtService.validateRefreshToken(username)){
+                if (refreshToken != null && jwtService.validateRefreshToken(username, refreshToken)){
                     // Generate new access token using the refresh token
                     String newAccessToken = jwtService.generateToken(username);
                     Cookie newAccessTokenCookie = new Cookie("accessToken", newAccessToken);

@@ -3,6 +3,8 @@ package com.nischal.SpringSecurityJwt.model;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
 
+import java.util.Date;
+
 @Entity
 public class Users {
 
@@ -12,6 +14,8 @@ public class Users {
     private  String password;
 
     private String refreshToken;
+
+    private Date expiryDate;
 
     public int getId() {
         return id;
@@ -41,6 +45,14 @@ public class Users {
         return refreshToken;
     }
 
+    public Date getExpiryDate() {
+        return expiryDate;
+    }
+
+    public void setExpiryDate(Date expiryDate) {
+        this.expiryDate = expiryDate;
+    }
+
     public void setRefreshToken(String refreshToken) {
         this.refreshToken = refreshToken;
     }
@@ -52,6 +64,7 @@ public class Users {
                 ", username='" + username + '\'' +
                 ", password='" + password + '\'' +
                 ", refreshToken='" + refreshToken + '\'' +
+                ", expiryDate=" + expiryDate +
                 '}';
     }
 }
