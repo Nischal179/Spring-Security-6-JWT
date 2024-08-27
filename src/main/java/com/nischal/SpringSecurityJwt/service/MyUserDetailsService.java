@@ -20,7 +20,6 @@ public class MyUserDetailsService implements UserDetailsService {
         Users users = userRepository.findByUsername(username);
 
         if(users == null) {
-            System.out.println("User Not Found");
             throw new UsernameNotFoundException("User not found");
         }
 //  DaoAuthenticationProvider expects a UserDetails object to represent

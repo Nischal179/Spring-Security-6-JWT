@@ -55,7 +55,7 @@ public class AuthService {
         Cookie refreshTokenCookie = new Cookie("refresh_token", refreshToken);
         refreshTokenCookie.setHttpOnly(true);
         refreshTokenCookie.setSecure(true); // Set this to true if using HTTPS
-        refreshTokenCookie.setPath("/");
+        refreshTokenCookie.setPath("/refresh-token");
         refreshTokenCookie.setMaxAge(7 * 24 * 60 * 60); // 7 days
 
         response.addCookie(accessTokenCookie);

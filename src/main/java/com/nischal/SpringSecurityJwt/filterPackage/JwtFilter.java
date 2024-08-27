@@ -28,38 +28,63 @@ public class JwtFilter extends OncePerRequestFilter {
 
     @Override
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain) throws ServletException, IOException {
-        // From client side we will receive JWT as Bearer 'JWT'
-        String authHeader = request.getHeader("Authorization");
-        String token = null;
+        // Get access token and refresh token from cookies
+        String accessToken = getTokenFromCookies(request, "accessToken");
+        String refreshToken = null;
         String username = null;
 
-        if (authHeader != null && authHeader.startsWith("Bearer ")) {
-            token = authHeader.substring(7);
-            username = jwtService.extractUserName(token);
+        if (accessToken != null ) {
+            username = jwtService.extractUserName(accessToken);
         }
 
         if (username != null && SecurityContextHolder.getContext().getAuthentication() == null) {
             UserDetails userDetails = userDetailsService.loadUserByUsername(username);
 
-            if (jwtService.validateToken(token, userDetails)) {
-                UsernamePasswordAuthenticationToken authToken =
-                        new UsernamePasswordAuthenticationToken(userDetails,null, userDetails.getAuthorities());
+            if (jwtService.validateToken(accessToken, userDetails)) {
+                setAuthentication(userDetails, request);
 
-                authToken.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
-                SecurityContextHolder.getContext().setAuthentication(authToken);
+            } else if ("/refreshToken".equals(request.getRequestURI())) {
+                // Get refresh token only if the request path matches "/refresh-token"
+                refreshToken = getTokenFromCookies(request, "refreshToken");
+
+                if (refreshToken != null && jwtService.validateRefreshToken(username)){
+                    // Generate new access token using the refresh token
+                    String newAccessToken = jwtService.generateToken(username);
+                    Cookie newAccessTokenCookie = new Cookie("accessToken", newAccessToken);
+                    newAccessTokenCookie.setHttpOnly(true);
+                    newAccessTokenCookie.setSecure(true); // Ensure to use secure flag in production
+                    newAccessTokenCookie.setPath("/");
+                    newAccessTokenCookie.setMaxAge(60 * 15); // 15 minutes or your desired expiration time
+                    response.addCookie(newAccessTokenCookie);
+
+                    setAuthentication(userDetails, request);
+                } else {
+                    // Refresh token is also invalid, prompt login
+                    response.sendError(HttpServletResponse.SC_UNAUTHORIZED, "Please log in again.");
+                    return;
+                }
             }
         }
         filterChain.doFilter(request,response);
     }
 
-    private String getTokenFromCookies(HttpServletRequest request) {
-        if (request.getCookies() != null) {
-            for (Cookie cookie : request.getCookies()) {
-                if ("access_token".equals(cookie.getName())) {
+
+    private String getTokenFromCookies(HttpServletRequest request, String name) {
+        Cookie[] cookies = request.getCookies();
+        if (cookies != null) {
+            for (Cookie cookie : cookies) {
+                if (cookie.getName().equals(name)) {
                     return cookie.getValue();
                 }
             }
         }
         return null;
+    }
+
+    private void setAuthentication(UserDetails userDetails, HttpServletRequest request) {
+        UsernamePasswordAuthenticationToken authToken =
+                new UsernamePasswordAuthenticationToken(userDetails,null, userDetails.getAuthorities());
+        authToken.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
+        SecurityContextHolder.getContext().setAuthentication(authToken);
     }
 }
