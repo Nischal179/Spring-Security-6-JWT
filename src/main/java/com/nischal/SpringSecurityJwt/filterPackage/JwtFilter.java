@@ -4,6 +4,7 @@ import com.nischal.SpringSecurityJwt.service.JWTService;
 import com.nischal.SpringSecurityJwt.service.MyUserDetailsService;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
+import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -27,27 +28,62 @@ public class JwtFilter extends OncePerRequestFilter {
 
     @Override
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain) throws ServletException, IOException {
-        // From client side we will receive JWT as Bearer 'JWT'
-        String authHeader = request.getHeader("Authorization");
-        String token = null;
+        // Get access token and refresh token from cookies
+        String accessToken = getTokenFromCookies(request, "access_token");
+        String refreshToken = getTokenFromCookies(request, "refresh_token");;
         String username = null;
 
-        if (authHeader != null && authHeader.startsWith("Bearer ")) {
-            token = authHeader.substring(7);
-            username = jwtService.extractUserName(token);
+        if (accessToken != null ) {
+            username = jwtService.extractUserName(accessToken);
         }
 
         if (username != null && SecurityContextHolder.getContext().getAuthentication() == null) {
             UserDetails userDetails = userDetailsService.loadUserByUsername(username);
 
-            if (jwtService.validateToken(token, userDetails)) {
-                UsernamePasswordAuthenticationToken authToken =
-                        new UsernamePasswordAuthenticationToken(userDetails,null, userDetails.getAuthorities());
+            if (jwtService.validateToken(accessToken, userDetails)) {
+                // Access token is valid
+                setAuthentication(userDetails, request);
 
-                authToken.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
-                SecurityContextHolder.getContext().setAuthentication(authToken);
+            } else if (jwtService.isTokenExpired(accessToken) && refreshToken != null) {
+
+                // Access token is expired, check if refresh token is valid
+
+                if (refreshToken != null && jwtService.validateRefreshToken(username, refreshToken)) {
+
+                    // Generate new access token using the refresh token
+                    String newAccessToken = jwtService.generateToken(username);
+                    Cookie newAccessTokenCookie = new Cookie("access_token", newAccessToken);
+                    newAccessTokenCookie.setHttpOnly(true);
+                    newAccessTokenCookie.setSecure(true); // Ensure to use secure flag in production
+                    newAccessTokenCookie.setPath("/");
+                    newAccessTokenCookie.setMaxAge(60 * 15); // 15 minutes or your desired expiration time
+                    response.addCookie(newAccessTokenCookie);
+
+                    // Set authentication with new token
+                    setAuthentication(userDetails, request);
+                }
             }
         }
         filterChain.doFilter(request,response);
+    }
+
+
+    private String getTokenFromCookies(HttpServletRequest request, String name) {
+        Cookie[] cookies = request.getCookies();
+        if (cookies != null) {
+            for (Cookie cookie : cookies) {
+                if (cookie.getName().equals(name)) {
+                    return cookie.getValue();
+                }
+            }
+        }
+        return null;
+    }
+
+    private void setAuthentication(UserDetails userDetails, HttpServletRequest request) {
+        UsernamePasswordAuthenticationToken authToken =
+                new UsernamePasswordAuthenticationToken(userDetails,null, userDetails.getAuthorities());
+        authToken.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
+        SecurityContextHolder.getContext().setAuthentication(authToken);
     }
 }

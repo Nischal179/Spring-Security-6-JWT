@@ -1,11 +1,13 @@
-package com.nischal.SpringSecurityJwt.model;
+package com.nischal.SpringSecurityJwt.dto;
 
+import com.nischal.SpringSecurityJwt.model.Users;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
 
 import java.util.Collection;
 import java.util.Collections;
+import java.util.Optional;
 
 public class UserPrincipal implements UserDetails {
 

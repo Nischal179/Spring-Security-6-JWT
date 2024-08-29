@@ -1,6 +1,6 @@
 package com.nischal.SpringSecurityJwt.service;
 
-import com.nischal.SpringSecurityJwt.model.UserPrincipal;
+import com.nischal.SpringSecurityJwt.dto.UserPrincipal;
 import com.nischal.SpringSecurityJwt.model.Users;
 import com.nischal.SpringSecurityJwt.repository.UserRepository;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -8,6 +8,8 @@ import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.stereotype.Service;
+
+import java.util.Optional;
 
 @Service
 public class MyUserDetailsService implements UserDetailsService {
@@ -20,7 +22,6 @@ public class MyUserDetailsService implements UserDetailsService {
         Users users = userRepository.findByUsername(username);
 
         if(users == null) {
-            System.out.println("User Not Found");
             throw new UsernameNotFoundException("User not found");
         }
 //  DaoAuthenticationProvider expects a UserDetails object to represent
