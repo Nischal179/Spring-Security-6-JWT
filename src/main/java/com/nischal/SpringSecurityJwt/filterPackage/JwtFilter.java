@@ -30,7 +30,7 @@ public class JwtFilter extends OncePerRequestFilter {
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain) throws ServletException, IOException {
         // Get access token and refresh token from cookies
         String accessToken = getTokenFromCookies(request, "access_token");
-        String refreshToken = null;
+        String refreshToken = getTokenFromCookies(request, "refresh_token");;
         String username = null;
 
         if (accessToken != null ) {
@@ -41,13 +41,15 @@ public class JwtFilter extends OncePerRequestFilter {
             UserDetails userDetails = userDetailsService.loadUserByUsername(username);
 
             if (jwtService.validateToken(accessToken, userDetails)) {
+                // Access token is valid
                 setAuthentication(userDetails, request);
 
-            } else if ("/refresh-token".equals(request.getRequestURI())) {
-                // Get refresh token only if the request path matches "/refresh-token"
-                refreshToken = getTokenFromCookies(request, "refresh_token");
+            } else if (jwtService.isTokenExpired(accessToken) && refreshToken != null) {
 
-                if (refreshToken != null && jwtService.validateRefreshToken(username, refreshToken)){
+                // Access token is expired, check if refresh token is valid
+
+                if (refreshToken != null && jwtService.validateRefreshToken(username, refreshToken)) {
+
                     // Generate new access token using the refresh token
                     String newAccessToken = jwtService.generateToken(username);
                     Cookie newAccessTokenCookie = new Cookie("access_token", newAccessToken);
@@ -57,11 +59,8 @@ public class JwtFilter extends OncePerRequestFilter {
                     newAccessTokenCookie.setMaxAge(60 * 15); // 15 minutes or your desired expiration time
                     response.addCookie(newAccessTokenCookie);
 
+                    // Set authentication with new token
                     setAuthentication(userDetails, request);
-                } else {
-                    // Refresh token is also invalid, prompt login
-                    response.sendError(HttpServletResponse.SC_UNAUTHORIZED, "Please log in again.");
-                    return;
                 }
             }
         }
