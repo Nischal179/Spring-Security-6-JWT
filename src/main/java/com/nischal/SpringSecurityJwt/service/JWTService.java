@@ -6,6 +6,8 @@ import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.io.Decoders;
 import io.jsonwebtoken.security.Keys;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.core.userdetails.UserDetails;
@@ -21,6 +23,8 @@ import java.util.function.Function;
 
 @Service
 public class JWTService {
+
+    private static final Logger logger = LoggerFactory.getLogger(JWTService.class);
 
     @Autowired
     private UserRepository userRepository;
@@ -59,9 +63,23 @@ public class JWTService {
 
     // Method to validate refresh token
     public boolean validateRefreshToken(String username, String refreshToken) {
+        logger.info("Validating refresh token for user: " + username);
         Users user = userRepository.findByUsername(username);
         if (user != null) {
-            return encoder.matches(refreshToken, user.getRefreshToken()) && !isTokenExpired(user.getExpiryDate());
+            if (isTokenExpired(user.getExpiryDate())) {
+                logger.warn("Refresh token for user: " + username + " is expired.");
+                return false;
+            }
+
+            boolean matches = encoder.matches(refreshToken, user.getRefreshToken());
+            if (matches) {
+                logger.info("Refresh token is valid.");
+                return true;
+            } else {
+                logger.warn("Refresh token mismatch for user: " + username);
+            }
+        } else {
+            logger.warn("No user found with username: " + username);
         }
         return false;
     }
@@ -76,6 +94,7 @@ public class JWTService {
     // Generic method to generate a token with custom expiration
     public String generateToken(String username, int expirationTimeInMs) {
 
+        logger.info("Generating token for user: " + username);
         Map<String, Object> claims = new HashMap<>();
 
         // Building the JWT with the claims

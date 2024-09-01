@@ -2,11 +2,14 @@ package com.nischal.SpringSecurityJwt.filterPackage;
 
 import com.nischal.SpringSecurityJwt.service.JWTService;
 import com.nischal.SpringSecurityJwt.service.MyUserDetailsService;
+import io.jsonwebtoken.ExpiredJwtException;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -20,6 +23,8 @@ import java.io.IOException;
 @Component
 public class JwtFilter extends OncePerRequestFilter {
 
+    private static final Logger logger = LoggerFactory.getLogger(JwtFilter.class);
+
     @Autowired
     private JWTService jwtService;
 
@@ -29,44 +34,69 @@ public class JwtFilter extends OncePerRequestFilter {
     @Override
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain) throws ServletException, IOException {
         // Get access token and refresh token from cookies
-        String accessToken = getTokenFromCookies(request, "access_token");
-        String refreshToken = getTokenFromCookies(request, "refresh_token");;
-        String username = null;
+        if (SecurityContextHolder.getContext().getAuthentication() == null) {
+            String accessToken = getTokenFromCookies(request, "access_token");
+            String refreshToken = getTokenFromCookies(request, "refresh_token");
+            ;
 
-        if (accessToken != null ) {
-            username = jwtService.extractUserName(accessToken);
-        }
-
-        if (username != null && SecurityContextHolder.getContext().getAuthentication() == null) {
-            UserDetails userDetails = userDetailsService.loadUserByUsername(username);
-
-            if (jwtService.validateToken(accessToken, userDetails)) {
-                // Access token is valid
-                setAuthentication(userDetails, request);
-
-            } else if (jwtService.isTokenExpired(accessToken) && refreshToken != null) {
-
-                // Access token is expired, check if refresh token is valid
-
-                if (refreshToken != null && jwtService.validateRefreshToken(username, refreshToken)) {
-
-                    // Generate new access token using the refresh token
-                    String newAccessToken = jwtService.generateToken(username);
-                    Cookie newAccessTokenCookie = new Cookie("access_token", newAccessToken);
-                    newAccessTokenCookie.setHttpOnly(true);
-                    newAccessTokenCookie.setSecure(true); // Ensure to use secure flag in production
-                    newAccessTokenCookie.setPath("/");
-                    newAccessTokenCookie.setMaxAge(60 * 15); // 15 minutes or your desired expiration time
-                    response.addCookie(newAccessTokenCookie);
-
-                    // Set authentication with new token
-                    setAuthentication(userDetails, request);
+            logger.info("Access Token: " + accessToken);
+            logger.info("Refresh Token: " + refreshToken);
+            try {
+                if (accessToken != null && accessToken.contains(".")) {
+                    // Check if the access token is expired
+                    if (jwtService.isTokenExpired(accessToken)) {
+                        logger.info("Access token expired.");
+                        handleExpiredAccessToken(accessToken, refreshToken, response, request);
+                    } else {
+                        logger.info("Access token is still valid.");
+                        authenticateWithToken(accessToken, request);
+                    }
+                } else {
+                    logger.warn("Access token is null or malformed.");
                 }
+            } catch (ExpiredJwtException e) {
+                logger.error("Access token expired and cannot be parsed.", e.getMessage());
+                handleExpiredAccessToken(e.getClaims().getSubject(), refreshToken, response, request);
             }
         }
         filterChain.doFilter(request,response);
     }
 
+    private void handleExpiredAccessToken(String username, String refreshToken, HttpServletResponse response,
+                                          HttpServletRequest request) {
+        if (refreshToken != null && jwtService.validateRefreshToken(username, refreshToken)) {
+            logger.info("Refresh token is valid. Generating new access token.");
+            String newAccessToken = jwtService.generateToken(username);
+            logger.info("New Access Token: " + newAccessToken);
+
+            addCookieToResponse(newAccessToken, response);
+            authenticateWithToken(newAccessToken, request);
+        } else {
+            logger.warn("Invalid or expired refresh token.");
+        }
+    }
+
+    private void authenticateWithToken(String accessToken, HttpServletRequest request) {
+        String username = jwtService.extractUserName(accessToken);
+        if (username != null && SecurityContextHolder.getContext().getAuthentication() == null) {
+            UserDetails userDetails = userDetailsService.loadUserByUsername(username);
+            if (jwtService.validateToken(accessToken, userDetails)) {
+                UsernamePasswordAuthenticationToken authToken =
+                        new UsernamePasswordAuthenticationToken(userDetails, null, userDetails.getAuthorities());
+                authToken.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
+                SecurityContextHolder.getContext().setAuthentication(authToken);
+            }
+        }
+    }
+
+    private void addCookieToResponse(String value, HttpServletResponse response) {
+        Cookie cookie = new Cookie("access_token", value);
+        cookie.setHttpOnly(true);
+        cookie.setSecure(true);
+        cookie.setPath("/");
+        cookie.setMaxAge(60 * 60 * 24); // 24 hours (1 day)
+        response.addCookie(cookie);
+    }
 
     private String getTokenFromCookies(HttpServletRequest request, String name) {
         Cookie[] cookies = request.getCookies();
