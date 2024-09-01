@@ -66,10 +66,21 @@ public class JWTService {
         logger.info("Validating refresh token for user: " + username);
         Users user = userRepository.findByUsername(username);
         if (user != null) {
-            logger.info("Refresh token is valid.");
-            return encoder.matches(refreshToken, user.getRefreshToken()) && !isTokenExpired(user.getExpiryDate());
+            if (isTokenExpired(user.getExpiryDate())) {
+                logger.warn("Refresh token for user: " + username + " is expired.");
+                return false;
+            }
+
+            boolean matches = encoder.matches(refreshToken, user.getRefreshToken());
+            if (matches) {
+                logger.info("Refresh token is valid.");
+                return true;
+            } else {
+                logger.warn("Refresh token mismatch for user: " + username);
+            }
+        } else {
+            logger.warn("No user found with username: " + username);
         }
-        logger.warn("Refresh token validation failed.");
         return false;
     }
 
